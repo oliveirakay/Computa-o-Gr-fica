@@ -31,7 +31,16 @@ void teclado(unsigned char tecla, int x, int y) {
         case 'b':
         case 'B':
             red = 0.0f; green = 0.0f; blue = 1.0f;
-            break;    
+            break;   
+
+        case '+':
+            size += sizeStep;
+            break;
+        case '-':
+            size -= sizeStep;
+            size<0? size = 0: size = size;
+
+            break; 
     }
     glutPostRedisplay();
 }
@@ -57,3 +66,5 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+// g++ -Wall -Iinclude -g main.cpp -o main.exe -Llib -lopengl32 -lglu32 -lfreeglut
