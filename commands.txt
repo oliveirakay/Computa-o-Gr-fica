@@ -1,0 +1,5 @@
+To Run:
+.\main.exe
+
+To Compile:
+g++.exe -Wall -Iinclude -g main.cpp -o main.exe -Llib-mingw-w64 -lglfw3 -lopengl32 -lgdi32
