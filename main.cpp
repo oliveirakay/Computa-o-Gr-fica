@@ -9,34 +9,51 @@ const float sizeStep = 0.01f;
 float red = 1.0f, green = 0.0f, blue = 0.0f;
 
 void desenhaQuadrado() {
-  glColor3f(red, green, blue);
-  glBegin(GL_QUADS);
+    glColor3f(red, green, blue);
+    glBegin(GL_QUADS);
     glVertex2f(-size + posX, -size + posY);
     glVertex2f(size + posX, -size + posY);
     glVertex2f(size + posX, size + posY);
     glVertex2f(-size + posX, size + posY);
-  glEnd();
+    glEnd();
+}
+
+void teclado(unsigned char tecla, int x, int y) {
+    switch (tecla) {
+        case 'r':
+        case 'R':
+            red = 1.0f; green = 0.0f; blue = 0.0f;
+            break;
+        case 'g':
+        case 'G':
+            red = 0.0f; green = 1.0f; blue = 0.0f;
+            break;
+        case 'b':
+        case 'B':
+            red = 0.0f; green = 0.0f; blue = 1.0f;
+            break;    
+    }
+    glutPostRedisplay();
 }
 
 void renderiza() {
-  glClear(GL_COLOR_BUFFER_BIT);
-  desenhaQuadrado();
-  glFlush();
+    glClear(GL_COLOR_BUFFER_BIT);
+    desenhaQuadrado();
+    glFlush();
 }
 
-int main(int argc, char** argv)
- {
-  glutInit(&argc, argv);
-  glutInitWindowSize(800, 600);
-  glutCreateWindow("Quadrado e Teclado");
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Quadrado e Teclado");
 
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-  glutDisplayFunc(renderiza);
+    glutDisplayFunc(renderiza);
+    glutKeyboardFunc(teclado);
 
-  glutMainLoop();
+    glutMainLoop();
 
-  return 0;
+    return 0;
 }
-//g++ -Wall -Iinclude -g main.cpp -o main.exe -Llib -lopengl32 -lglu32 -lfreeglut
-
