@@ -1,125 +1,203 @@
 #include <GL/glut.h>
+#include <math.h>
 
-float posX = 0.0f;
-float posY = 0.0f;
-float size = 0.1f;
-const float speed = 0.05f;
-const float sizeStep = 0.01f;
+float color[3] = {1.0f, 0.0f, 0.0f};
+float xPos = 0.0, yPos = 0.0;
+float size = 0.2;
+int speed = 20;
 
-float red = 1.0f, green = 0.0f, blue = 0.0f;
+#define PI 3.14159265358979323846
+#define NUM_SEGMENTOS 100
 
-void desenhaQuadrado()
+int animacaoAtiva = 0;
+
+void desenhaPonto(float x, float y)
 {
-    glColor3f(red, green, blue);
-    glBegin(GL_QUADS);
-    glVertex2f(-size + posX, -size + posY);
-    glVertex2f(size + posX, -size + posY);
-    glVertex2f(size + posX, size + posY);
-    glVertex2f(-size + posX, size + posY);
+    glColor3f(color[0], color[1], color[2]);
+
+    glBegin(GL_POINTS);
+    glVertex2f(xPos, yPos);
     glEnd();
 }
 
-void tecladoEspecial(int tecla, int x, int y)
+void desenhaQuadrado(float x, float y)
 {
+    glColor3f(color[0], color[1], color[2]);
 
-    switch (tecla)
+    glBegin(GL_QUADS);
+    glVertex2f(xPos - size, yPos - size);
+    glVertex2f(xPos + size, yPos - size);
+    glVertex2f(xPos + size, yPos + size);
+    glVertex2f(xPos - size, yPos + size);
+    glEnd();
+}
+
+void desenhaCirculo(float x, float y, float raio)
+{
+    glColor3f(color[0], color[1], color[2]);
+
+    glBegin(GL_POLYGON);
+    for (int i = 0; i <= NUM_SEGMENTOS; i++)
     {
-    case GLUT_KEY_UP:
-        posY += speed;
-        break;
-    case GLUT_KEY_DOWN:
-        posY -= speed;
-        break;
-    case GLUT_KEY_RIGHT:
-        posX += speed;
-        break;
-    case GLUT_KEY_LEFT:
-        posX -= speed;
-        break;
-    
-    case GLUT_KEY_HOME:
-        size = 0.1;
-        posX = -1+size;
-        posY =  1-size;
-        break;
-    case GLUT_KEY_END:
-        size = 0.1;
-        posX = 1-size;
-        posY =  -1+size;
-        break;
+        float angulo = 2.0f * PI * i / NUM_SEGMENTOS;
+        float dx = raio * cos(angulo);
+        float dy = raio * sin(angulo);
+        glVertex2f(x + dx, y + dy);
+    }
+    glEnd();
+}
 
-    default:
+void display()
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    desenhaQuadrado(0.0, 0.0);
+    glFlush();
+}
+
+void inicializa()
+{
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glPointSize(10.0f);
+}
+
+void mouse(int botao, int estado, int x, int y)
+{
+    if (botao == GLUT_LEFT_BUTTON && estado == GLUT_DOWN)
+    {
+        xPos = (x / (float)glutGet(GLUT_WINDOW_WIDTH)) * 2 - 1;
+        yPos = (glutGet(GLUT_WINDOW_HEIGHT) - y) / (float)glutGet(GLUT_WINDOW_HEIGHT) * 2 - 1;
+    }
+    glutPostRedisplay();
+}
+
+void mousePressionado(int botao, int estado, int x, int y)
+{
+    if (estado == GLUT_DOWN)
+    {
+        if (botao == GLUT_LEFT_BUTTON)
+        {
+            size += 0.05;
+        }
+        else if (botao == GLUT_MIDDLE_BUTTON)
+        {
+            size = 0.2;
+        }
+        else if (botao == GLUT_RIGHT_BUTTON)
+        {
+            if (size > 0.05)
+            {
+                size -= 0.05;
+            }
+        }
+    }
+    glutPostRedisplay();
+}
+
+void menu(int opcao)
+{
+    switch (opcao)
+    {
+    case 1: // vermelho
+        color[0] = 1;
+        color[1] = 0;
+        color[2] = 0;
+        break;
+    case 2: // verde
+        color[0] = 0;
+        color[1] = 1;
+        color[2] = 0;
+        break;
+    case 3: // azul
+        color[0] = 0;
+        color[1] = 0;
+        color[2] = 1;
         break;
     }
 
     glutPostRedisplay();
+}
+
+void movimento(int x, int y)
+{
+    xPos = (x / (float)glutGet(GLUT_WINDOW_WIDTH)) * 2 - 1;
+    yPos = (glutGet(GLUT_WINDOW_HEIGHT) - y) / (float)glutGet(GLUT_WINDOW_HEIGHT) * 2 - 1;
+
+    glutPostRedisplay();
+}
+
+void atualizaPosicao(int valor)
+{
+
+    if (animacaoAtiva)
+    {
+        xPos += 0.01;
+        if (xPos > 1)
+        {
+            xPos = -1;
+        }
+        glutPostRedisplay();
+        glutTimerFunc(speed, atualizaPosicao, 0);
+    }
 }
 
 void teclado(unsigned char tecla, int x, int y)
 {
     switch (tecla)
     {
-    case 'r':
-    case 'R':
-        red = 1.0f;
-        green = 0.0f;
-        blue = 0.0f;
+    case 'i':
+    case 'I':
+        if (animacaoAtiva == 0)
+        {
+            animacaoAtiva = 1;
+            glutTimerFunc(speed, atualizaPosicao, 0);
+        }
         break;
-    case 'g':
-    case 'G':
-        red = 0.0f;
-        green = 1.0f;
-        blue = 0.0f;
+    case 'p':
+    case 'P':
+        animacaoAtiva = 0;
         break;
-    case 'b':
-    case 'B':
-        red = 0.0f;
-        green = 0.0f;
-        blue = 1.0f;
+     case '-':
+    
+        speed+=10;
+        
         break;
-
     case '+':
-        size += sizeStep;
-        break;
-    case '-':
-        size -= sizeStep;
-        if (size < 0) size = 0;  // Garante que o size não fique negativo
+    
+        speed-=10;
+        speed <=0 ? speed = 1 : speed = speed;
         break;
 
-    case 'c':
-    case 'C':
-        size = 0.1;
-        posX = 0;
-        posY = 0;
-
-        break;
+        glutPostRedisplay();
     }
-    glutPostRedisplay();
-}
-
-void renderiza()
-{
-    glClear(GL_COLOR_BUFFER_BIT);
-    desenhaQuadrado();
-    glFlush();
 }
 
 int main(int argc, char **argv)
 {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowSize(800, 600);
-    glutCreateWindow("Quadrado e Teclado");
+    glutInitWindowSize(500, 500);
+    glutCreateWindow("Mouse, Menu e Animação");
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    inicializa();
 
-    glutDisplayFunc(renderiza);
+    // Criação do submenu
+    int submenu = glutCreateMenu(menu);
+    glutAddMenuEntry("Vermelho", 1);
+
+    // Criação do menu principal
+    glutCreateMenu(menu);
+    glutAddMenuEntry("Verde", 2);
+    glutAddMenuEntry("Azul", 3);
+    glutAddSubMenu("Mais Cores", submenu); // Adicionando o submenu corretamente
+
+    // Anexando o menu ao botão direito do mouse
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+
+    glutDisplayFunc(display);
+    glutMouseFunc(mousePressionado);  // botoes do mouse realizando ações
+    glutMotionFunc(movimento);        // preciona o botao e consegue movimentar
+    glutPassiveMotionFunc(movimento); // sem precisar pressionar pra mexer
     glutKeyboardFunc(teclado);
-    glutSpecialFunc(tecladoEspecial);
-
     glutMainLoop();
 
     return 0;
 }
-
-// g++ -Wall -Iinclude -g main.cpp -o main.exe -Llib -lopengl32 -lglu32 -lfreeglut
