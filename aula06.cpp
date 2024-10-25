@@ -161,10 +161,10 @@ void teclado(unsigned char tecla, int x, int y)
         speed+=10;
         
         break;
-    case '+':
+    case '=':
     
         speed-=10;
-        speed <=0 ? speed = 1 : speed = speed;
+        speed <0 ? speed = 1 : speed = speed;
         break;
 
         glutPostRedisplay();
