@@ -4,44 +4,73 @@
 #include <time.h>
 
 // Variáveis globais para o catavento
-float cataventoPosX = 0.0f, cataventoPosY = 0.0f; // Posição do catavento
-float cataventoScale = 1.0f;                      // Escala do catavento
-float rotationAngle = 0.0f;                       // Ângulo de rotação das hélices
-float rotationSpeed = 0.05f;                      // Velocidade de rotação
-bool isRotating = true;                           // Controle de rotação
-float cores[4][3] = {{0.506f, 0.768f, 0.94f}, {1.0f, 0.623f, 0.615f}, {0.659f, 0.870f, 0.231f}, {1.0f, 0.957f, 0.231f}}; // Cores das hélices
+float cataventoPosX = 0.0f, cataventoPosY = 0.0f;                                                     // Posição do catavento
+float cataventoScale = 1.0f;                                                                          // Escala do catavento
+float rotationAngle = 0.0f;                                                                           // Ângulo de rotação das hélices
+float rotationSpeed = 0.05f;                                                                          // Velocidade de rotação
+bool isRotating = true;                                                                               // Controle de rotação
+float cores[4][3] = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.0f}}; // Cores das hélices
 
 // Variáveis de tamanho para a haste e as hélices do catavento
-float sizeX = 0.05f;           // Largura da haste
-float sizeY = 0.8f;            // Altura da haste
+float sizeX = 0.08f;           // Largura da haste
+float sizeY = 1.2f;            // Altura da haste
 float helixOuterRadius = 0.3f; // Comprimento das hélices (distância até o vértice mais afastado)
-float helixInnerRadius = 0.15f; // Distância até o vértice mais próximo
+float helixInnerRadius = 0.75f; // Distância até o vértice mais próximo
+
+void desenhaCirculoComGradiente(float x, float y, float raio) {
+    glBegin(GL_TRIANGLE_FAN);
+    glColor3f(1.0f, 1.0f, 1.0f); // Cor branca no centro
+    glVertex2f(x, y); // Centro do círculo
+
+    // Gradiente em direção à borda
+    glColor3f(0.5f, 0.5f, 0.5f); // Cor mais escura na borda
+    for (int i = 0; i <= 20; ++i) {
+        float angle = i * 2.0f * M_PI / 20;
+        glVertex2f(x + cos(angle) * raio, y + sin(angle) * raio);
+    }
+    glEnd();
+}
+
+
 
 void desenhaCatavento()
 {
-    // Desenha a haste
     glPushMatrix();
     glTranslatef(cataventoPosX, cataventoPosY, 0.0f);
     glScalef(cataventoScale, cataventoScale, 1.0f);
-    glColor3f(1.0f, 1.0f, 1.0f);
+
     glBegin(GL_QUADS);
-    glVertex2f(-sizeX, -sizeY);
-    glVertex2f(sizeX, -sizeY);
-    glVertex2f(sizeX, 0.0f);
-    glVertex2f(-sizeX, 0.0f);
+    glColor3f(0.4f, 0.2f, 0.1f); glVertex2f(-sizeX, -sizeY); // Parte inferior esquerda
+    glColor3f(0.6f, 0.3f, 0.15f); glVertex2f(sizeX, -sizeY); // Parte inferior direita
+    glColor3f(0.6f, 0.3f, 0.15f); glVertex2f(sizeX, 0.0f);   // Parte superior direita
+    glColor3f(0.4f, 0.2f, 0.1f); glVertex2f(-sizeX, 0.0f);   // Parte superior esquerda
     glEnd();
 
-    // Desenha as hélices com triângulos retângulos
+    // Desenha as hélices
     glRotatef(rotationAngle, 0.0f, 0.0f, 1.0f);
     for (int i = 0; i < 4; ++i)
     {
-        glColor3fv(cores[i]);
         glBegin(GL_TRIANGLES);
-        glVertex2f(0.0f, 0.0f); // Vértice no centro do catavento
-        glVertex2f(helixOuterRadius * cos(i * M_PI / 2), helixOuterRadius * sin(i * M_PI / 2)); // Vértice mais afastado
-        glVertex2f(helixInnerRadius * cos(i * M_PI / 2), helixInnerRadius * sin(i * M_PI / 2)); // Vértice mais próximo
+
+        // Vértice central com a cor inicial mais clara
+        glColor3f(cores[i][0], cores[i][1], cores[i][2]); 
+        glVertex2f(0.0f, 0.0f);
+
+        // Vértice mais distante com uma cor mais escura
+        glColor3f(cores[i][0] * 0.6f, cores[i][1] * 0.6f, cores[i][2] * 0.6f);
+        glVertex2f(helixOuterRadius * cos(i * M_PI / 2), helixOuterRadius * sin(i * M_PI / 2));
+
+        // Outro vértice distante com uma variação de cor
+        glColor3f(cores[i][0] * 0.8f, cores[i][1] * 0.8f, cores[i][2] * 0.8f);
+        glVertex2f(helixInnerRadius * cos((i + 1) * M_PI / 2), helixInnerRadius * sin((i + 1) * M_PI / 2));
+
         glEnd();
     }
+
+    // Desenha um círculo no centro
+    glColor3f(1.0f, 1.0f, 1.0f);
+    desenhaCirculoComGradiente(0.0f, 0.0f, 0.08f);
+
     glPopMatrix();
 }
 
@@ -52,18 +81,17 @@ void display()
     glutSwapBuffers();
 }
 
-void atualiza(int value)
+
+
+void idle()
 {
-    // Atualiza o ângulo de rotação se estiver rodando
     if (isRotating)
     {
         rotationAngle += rotationSpeed;
         if (rotationAngle > 360.0f)
             rotationAngle -= 360.0f;
     }
-
-    glutPostRedisplay();                  // Solicita a atualização da tela
-    glutTimerFunc(16, atualiza, 0);       // Chama esta função novamente após 16ms
+    glutPostRedisplay();
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -97,13 +125,15 @@ void keyboard(unsigned char key, int x, int y)
         }
         break;
     case '1':
-        rotationSpeed = 0.02f;
+        rotationSpeed < 0 ? rotationSpeed = -0.02f : rotationSpeed = 0.02f;
         break;
     case '2':
-        rotationSpeed = 0.05f;
+        rotationSpeed < 0 ? rotationSpeed = -0.05f : rotationSpeed = 0.05f;
+
         break;
     case '3':
-        rotationSpeed = 0.1f;
+        rotationSpeed < 0 ? rotationSpeed = -0.1f : rotationSpeed = 0.1f;
+
         break;
     }
     glutPostRedisplay();
@@ -176,10 +206,10 @@ int main(int argc, char **argv)
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(600, 600);
-    glutCreateWindow("Catavento Interativo");
+    glutCreateWindow("Catavento BraLu");
     init();
     glutDisplayFunc(display);
-    glutTimerFunc(16, atualiza, 0); // Chama `atualiza` pela primeira vez após 16ms
+    glutIdleFunc(idle);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(specialKeys);
     glutMouseFunc(mouse);

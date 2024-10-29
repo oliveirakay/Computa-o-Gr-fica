@@ -1,2 +1,3 @@
 g++ -Wall -Iinclude -g main.cpp -o main.exe -Llib -lopengl32 -lglu32 -lfreeglut
 
+g++ -Wall -Iinclude -g atividade.cpp -o atividade.exe -Llib -lopengl32 -lglu32 -lfreeglut
