@@ -3,74 +3,98 @@
 #include <cmath>
 #include <algorithm>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+GLuint idsTextura[3];
+float rotacaoX = 0.0;
+float rotacaoY = 0.0;
+float rotacaoZ = 0.0;
+
+void carregarTextura(const char* nomeArquivo, int indice)
+{
+    int largura, altura, canais;
+
+    unsigned char *dados = stbi_load(nomeArquivo, &largura, &altura, &canais, 0);
+
+    if (!dados)
+        exit(1);
+
+    // gerar textura
+    glGenTextures(1, &idsTextura[indice]);
+    glBindTexture(GL_TEXTURE_2D, idsTextura[indice]);
+
+    // configurar parametros da textura
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, (canais == 4) ? GL_RGBA : GL_RGB, 
+                 largura, altura, 0, (canais == 4) ? GL_RGBA : GL_RGB,
+                 GL_UNSIGNED_BYTE, dados);
+
+    // liberar a memoria da imagem
+    stbi_image_free(dados);              
+}
+
 int ombro = 0, cotovelo = 0, pulso = 0;
 float cameraAngleX = 0.0f, cameraAngleY = 0.0f;
 float cameraDistance = 15.0f;
 bool rotatingCamera = false;
 bool animatingCamera = false;
-float animationSpeed = 0.005f; // Update: Changed animationSpeed to 0.005f
+float animationSpeed = 0.005f;
 
 void inicializa() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    carregarTextura("madeira.jpg", 0);
+    carregarTextura("metal.jpg", 1);
+    carregarTextura("esponja.jpg", 2);
 }
 
-void desenhaCubo(float tamanho) {
+void desenhaCubo(float tamanho, int texturaIndice) {
+    glBindTexture(GL_TEXTURE_2D, idsTextura[texturaIndice]);
     glPushMatrix();
     glScalef(tamanho, tamanho, tamanho);
     
-    // Face frontal
     glBegin(GL_QUADS);
-    glColor3f(1.0f, 0.0f, 0.0f);  // Vermelho
-    glVertex3f(-1.0f, -1.0f,  1.0f);
-    glVertex3f( 1.0f, -1.0f,  1.0f);
-    glVertex3f( 1.0f,  1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f,  1.0f);
-    glEnd();
+    // Face frontal
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
 
     // Face traseira
-    glBegin(GL_QUADS);
-    glColor3f(0.0f, 1.0f, 0.0f);  // Verde
-    glVertex3f(-1.0f, -1.0f, -1.0f);
-    glVertex3f(-1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f, -1.0f, -1.0f);
-    glEnd();
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
 
     // Face superior
-    glBegin(GL_QUADS);
-    glColor3f(0.0f, 0.0f, 1.0f);  // Azul
-    glVertex3f(-1.0f,  1.0f, -1.0f);
-    glVertex3f(-1.0f,  1.0f,  1.0f);
-    glVertex3f( 1.0f,  1.0f,  1.0f);
-    glVertex3f( 1.0f,  1.0f, -1.0f);
-    glEnd();
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
 
     // Face inferior
-    glBegin(GL_QUADS);
-    glColor3f(1.0f, 1.0f, 0.0f);  // Amarelo
-    glVertex3f(-1.0f, -1.0f, -1.0f);
-    glVertex3f( 1.0f, -1.0f, -1.0f);
-    glVertex3f( 1.0f, -1.0f,  1.0f);
-    glVertex3f(-1.0f, -1.0f,  1.0f);
-    glEnd();
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
 
     // Face direita
-    glBegin(GL_QUADS);
-    glColor3f(1.0f, 0.0f, 1.0f);  // Magenta
-    glVertex3f( 1.0f, -1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f, -1.0f);
-    glVertex3f( 1.0f,  1.0f,  1.0f);
-    glVertex3f( 1.0f, -1.0f,  1.0f);
-    glEnd();
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
 
     // Face esquerda
-    glBegin(GL_QUADS);
-    glColor3f(0.0f, 1.0f, 1.0f);  // Ciano
-    glVertex3f(-1.0f, -1.0f, -1.0f);
-    glVertex3f(-1.0f, -1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f,  1.0f);
-    glVertex3f(-1.0f,  1.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
     glEnd();
 
     glPopMatrix();
@@ -99,7 +123,7 @@ void display() {
     glTranslatef(1.0f, 0.0f, 0.0f);
     glPushMatrix();
     glScalef(2.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f);
+    desenhaCubo(0.5f, 0);
     glPopMatrix();
 
     // Parte do cotovelo
@@ -108,7 +132,7 @@ void display() {
     glTranslatef(1.0f, 0.0f, 0.0f);
     glPushMatrix();
     glScalef(2.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f);
+    desenhaCubo(0.5f, 1);
     glPopMatrix();
 
     // Parte do pulso
@@ -117,7 +141,7 @@ void display() {
     glTranslatef(0.5f, 0.0f, 0.0f);
     glPushMatrix();
     glScalef(1.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f);
+    desenhaCubo(0.5f, 2);
     glPopMatrix();
 
     glPopMatrix();
@@ -225,5 +249,4 @@ int main(int argc, char** argv) {
     glutMainLoop();
     return 0;
 }
-
 
