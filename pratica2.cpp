@@ -1,4 +1,3 @@
-
 #include <GL/glut.h>
 #include <cmath>
 #include <algorithm>
@@ -17,8 +16,10 @@ void carregarTextura(const char* nomeArquivo, int indice)
 
     unsigned char *dados = stbi_load(nomeArquivo, &largura, &altura, &canais, 0);
 
-    if (!dados)
+    if (!dados) {
+        printf("Erro ao carregar a textura %s\n", nomeArquivo);
         exit(1);
+    }
 
     // gerar textura
     glGenTextures(1, &idsTextura[indice]);
@@ -38,13 +39,6 @@ void carregarTextura(const char* nomeArquivo, int indice)
     stbi_image_free(dados);              
 }
 
-int ombro = 0, cotovelo = 0, pulso = 0;
-float cameraAngleX = 0.0f, cameraAngleY = 0.0f;
-float cameraDistance = 15.0f;
-bool rotatingCamera = false;
-bool animatingCamera = false;
-float animationSpeed = 0.005f;
-
 void inicializa() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -54,199 +48,147 @@ void inicializa() {
     carregarTextura("esponja.jpg", 2);
 }
 
-void desenhaCubo(float tamanho, int texturaIndice) {
+void desenhaEsfera(float raio, int texturaIndice) {
     glBindTexture(GL_TEXTURE_2D, idsTextura[texturaIndice]);
-    glPushMatrix();
-    glScalef(tamanho, tamanho, tamanho);
-    
-    glBegin(GL_QUADS);
-    // Face frontal
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
 
-    // Face traseira
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
+    int stacks = 20; // Divisões ao longo do eixo z
+    int slices = 20; // Divisões ao longo do círculo
 
-    // Face superior
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
+    for (int i = 0; i <= stacks; i++) {
+        float lat0 = M_PI * (-0.5f + (float)(i) / stacks);    // Latitude inferior
+        float z0  = sin(lat0) * raio;                           // Coordenada z do ponto inferior
+        float r0  = cos(lat0) * raio;                           // Raio do círculo na latitude inferior
 
-    // Face inferior
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+        float lat1 = M_PI * (-0.5f + (float)(i + 1) / stacks);  // Latitude superior
+        float z1 = sin(lat1) * raio;                            // Coordenada z do ponto superior
+        float r1 = cos(lat1) * raio;                            // Raio do círculo na latitude superior
 
-    // Face direita
-    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+        glBegin(GL_QUAD_STRIP);
+        for (int j = 0; j <= slices; j++) {
+            float lng = 2 * M_PI * (float)(j) / slices;          // Longitude
+            float x = cos(lng);                                  // Coordenada x do ponto
+            float y = sin(lng);                                  // Coordenada y do ponto
 
-    // Face esquerda
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-    glEnd();
+            // Coordenadas de textura
+            float s = (float)(j) / slices;                       // Coordenada s da textura
+            float t0 = (float)(i) / stacks;                      // Coordenada t da textura
+            float t1 = (float)(i + 1) / stacks;                  // Coordenada t+1 da textura
 
-    glPopMatrix();
+            glTexCoord2f(s, t0);
+            glVertex3f(x * r0, y * r0, z0);                      // Ponto inferior da esfera
+
+            glTexCoord2f(s, t1);
+            glVertex3f(x * r1, y * r1, z1);                      // Ponto superior da esfera
+        }
+        glEnd();
+    }
+}
+
+void desenhaCilindro(float raio, float altura, int texturaIndice) {
+    glBindTexture(GL_TEXTURE_2D, idsTextura[texturaIndice]);
+    GLUquadric* cilindro = gluNewQuadric();
+    gluQuadricTexture(cilindro, GL_TRUE);
+    gluCylinder(cilindro, raio, raio, altura, 32, 32); // Criando o cilindro com a textura aplicada
+    gluDeleteQuadric(cilindro);
 }
 
 void display() {
-    if (animatingCamera) {
-        cameraAngleY += animationSpeed;
-        if (cameraAngleY > 2 * M_PI) {
-            cameraAngleY -= 2 * M_PI;
-        }
-    }
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
     // Posicionar a câmera
-    float camX = cameraDistance * sin(cameraAngleY) * cos(cameraAngleX);
-    float camY = cameraDistance * sin(cameraAngleX);
-    float camZ = cameraDistance * cos(cameraAngleY) * cos(cameraAngleX);
-    gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    gluLookAt(5.0f, 5.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f); // Definir uma boa posição para a câmera
 
     // Parte do ombro
     glPushMatrix();
-    glRotatef(static_cast<float>(ombro), 0.0f, 0.0f, 1.0f);
+    glRotatef(static_cast<float>(rotacaoX), 0.0f, 0.0f, 1.0f);
     glTranslatef(1.0f, 0.0f, 0.0f);
+
+    // Cilindro do ombro
     glPushMatrix();
-    glScalef(2.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f, 0);
+    glRotatef(90, 0.0f, 1.0f, 0.0f);  // Girar para alinhar ao eixo Y
+    desenhaCilindro(0.4f, 2.0f, 0); // Cilindro de ombro
+    glPopMatrix();
+
+    // Adiciona a esfera manual na junção do ombro
+    glPushMatrix();
+    glTranslatef(1.0f, 0.0f, 0.0f);  // Posição da esfera
+    desenhaEsfera(0.3f, 2); // Esfera de junção
     glPopMatrix();
 
     // Parte do cotovelo
-    glTranslatef(1.0f, 0.0f, 0.0f);
-    glRotatef(static_cast<float>(cotovelo), 0.0f, 0.0f, 1.0f);
-    glTranslatef(1.0f, 0.0f, 0.0f);
+    glTranslatef(2.0f, 0.0f, 0.0f);  // Posicionar cotovelo na extremidade do ombro
+    glRotatef(static_cast<float>(rotacaoY), 0.0f, 0.0f, 1.0f);
+
+    // Cilindro do cotovelo
     glPushMatrix();
-    glScalef(2.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f, 1);
+    glRotatef(90, 0.0f, 1.0f, 0.0f);  // Girar para alinhar ao eixo Y
+    desenhaCilindro(0.3f, 2.0f, 1); // Cilindro de cotovelo
+    glPopMatrix();
+
+    // Adiciona a esfera manual na junção do cotovelo
+    glPushMatrix();
+    glTranslatef(2.0f, 0.0f, 0.0f);  // Posição da esfera
+    desenhaEsfera(0.3f, 2); // Esfera de junção
     glPopMatrix();
 
     // Parte do pulso
-    glTranslatef(1.0f, 0.0f, 0.0f);
-    glRotatef(static_cast<float>(pulso), 0.0f, 0.0f, 1.0f);
-    glTranslatef(0.5f, 0.0f, 0.0f);
+    glTranslatef(2.0f, 0.0f, 0.0f);  // Posicionar pulso na extremidade do cotovelo
+    glRotatef(static_cast<float>(rotacaoZ), 0.0f, 0.0f, 1.0f);
+
+    // Cilindro do pulso
     glPushMatrix();
-    glScalef(1.0f, 0.4f, 1.0f);
-    desenhaCubo(0.5f, 2);
+    glRotatef(90, 1.0f, 0.0f, 0.0f);  // Girar para alinhar ao eixo Y
+    desenhaCilindro(0.2f, 1.5f, 2); // Cilindro de pulso
+    glPopMatrix();
+
+    // Adiciona a esfera manual na junção do pulso
+    glPushMatrix();
+    glTranslatef(2.0f, 0.0f, 0.0f);  // Posição da esfera
+    desenhaEsfera(0.2f, 2); // Esfera de junção
     glPopMatrix();
 
     glPopMatrix();
 
     glutSwapBuffers();
-
-    if (animatingCamera) {
-        glutPostRedisplay();
-    }
 }
 
-void teclado(unsigned char tecla, int x, int y)
-{
-    switch (tecla)
-    {
-    case 'o':
-        ombro = (ombro + 5) % 360;
-        glutPostRedisplay();
-        break;
-    case 'O':
-        ombro = (ombro - 5 + 360) % 360;
-        glutPostRedisplay();
-        break;
-    case 'c':
-        cotovelo = std::min(cotovelo + 5, 150);
-        glutPostRedisplay();
-        break;
-    case 'C':
-        cotovelo = std::max(cotovelo - 5, -150);
-        glutPostRedisplay();
-        break;
-    case 'p':
-        pulso = std::min(pulso + 5, 90);
-        glutPostRedisplay();
-        break;
-    case 'P':
-        pulso = std::max(pulso - 5, -90);
-        glutPostRedisplay();
-        break;
-    case 'r':
-    case 'R':
-        animatingCamera = !animatingCamera;
-        if (animatingCamera) {
-            glutIdleFunc(display);
-        } else {
-            glutIdleFunc(NULL);
-        }
-        glutPostRedisplay();
-        break;
+void teclado(unsigned char key, int x, int y) {
+    switch (key) {
     case 'w':
-        cameraAngleX = std::min(cameraAngleX + 0.1f, static_cast<float>(M_PI_2));
-        glutPostRedisplay();
+        rotacaoX += 5;
         break;
     case 's':
-        cameraAngleX = std::max(cameraAngleX - 0.1f, -static_cast<float>(M_PI_2));
-        glutPostRedisplay();
+        rotacaoX -= 5;
         break;
     case 'a':
-        cameraAngleY -= 0.1f;
-        glutPostRedisplay();
+        rotacaoY += 5;
         break;
     case 'd':
-        cameraAngleY += 0.1f;
-        glutPostRedisplay();
+        rotacaoY -= 5;
         break;
-    case '+':
-        cameraDistance = std::max(cameraDistance - 0.5f, 5.0f);
-        glutPostRedisplay();
+    case 'q':
+        rotacaoZ += 5;
         break;
-    case '-':
-        cameraDistance = std::min(cameraDistance + 0.5f, 30.0f);
-        glutPostRedisplay();
+    case 'e':
+        rotacaoZ -= 5;
         break;
-    case 27:  // ESC key
+    case 27: // ESC
         exit(0);
-        break;
     }
 }
 
-void reshape(int largura, int altura) {
-    glViewport(0, 0, largura, altura);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(65.0, static_cast<float>(largura) / static_cast<float>(altura), 1.0, 100.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-}
-
-void idle() {
-    if (animatingCamera) {
-        glutPostRedisplay();
-    }
-}
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("Braço Mecânico com 3 Eixos - Câmera Orbital");
+    glutCreateWindow("Modelo com Esferas nas Junções");
+
     inicializa();
+
     glutDisplayFunc(display);
-    glutReshapeFunc(reshape);
     glutKeyboardFunc(teclado);
-    glutIdleFunc(idle);
+
     glutMainLoop();
     return 0;
 }
-
