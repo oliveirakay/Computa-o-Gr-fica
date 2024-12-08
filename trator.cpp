@@ -6,6 +6,13 @@
 float cameraAngleX = 0.0f, cameraAngleY = 0.0f;
 float cameraDistance = 10.0f;
 
+float posX = 0.0f, posZ = 0.0f; // Posição do trator
+float direcao = 0.0f; // Direção do trator (ângulo em graus)
+
+float velocidade = 0.5f; // Velocidade do trator
+
+
+
 void inicializa() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);   // Cor de fundo cinza escuro
     glEnable(GL_DEPTH_TEST);                // Habilita o teste de profundidade
@@ -377,24 +384,39 @@ void desenhaBracoTraseiro() {
     glPopMatrix(); // Final do antebraço
     glPopMatrix(); // Final do braço principal
 }
+void desenhaMapa() {
+    glPushMatrix();
+    glColor3f(0.5f, 0.8f, 0.5f); // Verde claro para o chão
+    glBegin(GL_QUADS);
+    glVertex3f(-50.0f, -0.5f, -50.0f);
+    glVertex3f(-50.0f, -0.5f, 50.0f);
+    glVertex3f(50.0f, -0.5f, 50.0f);
+    glVertex3f(50.0f, -0.5f, -50.0f);
+    glEnd();
+    glPopMatrix();
+}
+
 
 void desenhaTrator() {
-    // Desenhar o corpo do trator
     glPushMatrix();
+    // Aplica a posição e rotação do trator
+    glTranslatef(posX, 0.0f, posZ);
+    glRotatef(direcao, 0.0f, 1.0f, 0.0f);
+
+    // Desenhar o corpo do trator
     glColor3f(0.968f, 0.58f, 0.11f); // Amarelo alaranjado
     desenhaCorpoTrator();
-    glPopMatrix();
 
-    // Desenhar a cabine do motorista (deslocada para perto das rodas traseiras)
+    // Desenhar a cabine do motorista
     glPushMatrix();
-    glTranslatef(.5f, 1.f, 0.0f); // Posição da cabine deslocada para perto das rodas traseiras
+    glTranslatef(0.5f, 1.0f, 0.0f); // Posição da cabine deslocada
     desenhaCabine();
     glPopMatrix();
 
     // Desenhar o braço frontal da retroescavadeira
     desenhaBracoDuplo();
 
-    // Braço traseiro
+    // Desenhar o braço traseiro da retroescavadeira
     desenhaBracoTraseiro();
 
     // Configuração das rodas
@@ -402,42 +424,38 @@ void desenhaTrator() {
     float larguraRodasTraseiras = 0.7f; // Largura das rodas traseiras
     float raioRodasDianteiras = 0.6f;  // Raio das rodas dianteiras (menores)
     float larguraRodasDianteiras = 0.4f; // Largura das rodas dianteiras
-
-    // Posições
-    float posicaoRodasY = -0.5f;       // Altura das rodas (parte inferior)
+    float posicaoRodasY = -0.5f;       // Altura das rodas
     float posicaoRodasTraseirasX = 1.3f;  // Posição X das rodas traseiras
     float posicaoRodasDianteirasX = -1.5f; // Posição X das rodas dianteiras
     float posZ = 1.2f;
 
     // Rodas traseiras - direita
     glPushMatrix();
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta
-    glTranslatef(posicaoRodasTraseirasX, posicaoRodasY, posZ); // Lado direito traseiro
+    glColor3f(0.1f, 0.1f, 0.1f); // Preto
+    glTranslatef(posicaoRodasTraseirasX, posicaoRodasY, posZ);
     desenhaRoda(raioRodasTraseiras, larguraRodasTraseiras);
     glPopMatrix();
 
     // Rodas traseiras - esquerda
     glPushMatrix();
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta
-    glTranslatef(posicaoRodasTraseirasX, posicaoRodasY, -posZ); // Lado esquerdo traseiro
+    glTranslatef(posicaoRodasTraseirasX, posicaoRodasY, -posZ);
     desenhaRoda(raioRodasTraseiras, larguraRodasTraseiras);
     glPopMatrix();
 
     // Rodas dianteiras - direita
     glPushMatrix();
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta
-    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, posZ); // Lado direito dianteiro
+    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, posZ);
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
 
     // Rodas dianteiras - esquerda
     glPushMatrix();
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta
-    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, -posZ); // Lado esquerdo dianteiro
+    glTranslatef(posicaoRodasDianteirasX, posicaoRodasY, -posZ);
     desenhaRoda(raioRodasDianteiras, larguraRodasDianteiras);
     glPopMatrix();
-}
 
+    glPopMatrix(); // Finaliza as transformações do trator
+}
 
 
 void display() {
@@ -459,17 +477,21 @@ void display() {
 
 void teclado(unsigned char tecla, int x, int y) {
     switch (tecla) {
-    case 'w':
-        cameraAngleX = std::min(cameraAngleX + 0.1f, static_cast<float>(M_PI_2));
+    case 's': // Mover para frente
+        posX += velocidade * cos(direcao * M_PI / 180.0f);
+        posZ -= velocidade * sin(direcao * M_PI / 180.0f);
         break;
-    case 's':
-        cameraAngleX = std::max(cameraAngleX - 0.1f, -static_cast<float>(M_PI_2));
+    case 'w': // Mover para trás
+        posX -= velocidade * cos(direcao * M_PI / 180.0f);
+        posZ += velocidade * sin(direcao * M_PI / 180.0f);
         break;
-    case 'a':
-        cameraAngleY -= 0.1f;
+    case 'a': // Girar para a esquerda
+        direcao += 5.0f;
+        if (direcao >= 360.0f) direcao -= 360.0f; // Mantém o ângulo entre 0 e 360
         break;
-    case 'd':
-        cameraAngleY += 0.1f;
+    case 'd': // Girar para a direita
+        direcao -= 5.0f;
+        if (direcao < 0.0f) direcao += 360.0f; // Mantém o ângulo entre 0 e 360
         break;
     case '+':
         cameraDistance = std::max(cameraDistance - 0.5f, 5.0f);
