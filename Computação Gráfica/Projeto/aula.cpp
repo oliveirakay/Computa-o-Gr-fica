@@ -18,7 +18,7 @@ bool desacelerando = false; // Indica se o personagem está desacelerando
 
 void atualizaAnimacao(int value) {
     if (andando || correndo) {
-        float velocidade = correndo ? 7.0f : 4.0f;
+        float velocidade = correndo ? 6.0f : 4.0f;
 
         if (aumentandoBracos) {
             anguloBracos += velocidade;
