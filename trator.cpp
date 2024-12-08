@@ -11,26 +11,79 @@ float direcao = 0.0f; // Direção do trator (ângulo em graus)
 
 float velocidade = 0.5f; // Velocidade do trator
 
+GLfloat lightPosition[] = { 5.0f, 5.0f, 5.0f, 1.0f }; // Posição da luz
+GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Luz ambiente
+GLfloat lightDiffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };  // Luz difusa
+GLfloat lightSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // Luz especular
 
 
 void inicializa() {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);   // Cor de fundo cinza escuro
-    glEnable(GL_DEPTH_TEST);                // Habilita o teste de profundidade
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);   // Cor de fundo
+    glEnable(GL_DEPTH_TEST);                // Habilita profundidade
     glEnable(GL_LIGHTING);                  // Habilita iluminação
-    glEnable(GL_LIGHT0);                    // Habilita a luz 0
+    glEnable(GL_LIGHT0);                    // Habilita a fonte de luz 0
 
-    GLfloat light_pos[] = { 5.0f, 5.0f, 5.0f, 1.0f };
-    GLfloat light_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-    GLfloat light_diffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-    GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    // Configura luz inicial
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
 
-    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-
-    glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_COLOR_MATERIAL);            // Habilita cores no material
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+}
+
+void atualizaIluminacao() {
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+    glutPostRedisplay();
+}
+
+void resetarTrator() {
+    // Resetar apenas as variáveis relevantes
+    posX = 0.0f;
+    posZ = 0.0f;
+    direcao = 0.0f;
+
+    // Atualizar a exibição
+    glutPostRedisplay();
+}
+
+
+
+void menu(int opcao) {
+    switch (opcao) {
+    case 1: // Aumentar intensidade da luz difusa
+        for (int i = 0; i < 3; i++) {
+            lightDiffuse[i] = std::min(lightDiffuse[i] + 0.1f, 1.0f);
+        }
+        break;
+    case 2: // Diminuir intensidade da luz difusa
+        for (int i = 0; i < 3; i++) {
+            lightDiffuse[i] = std::max(lightDiffuse[i] - 0.1f, 0.0f);
+        }
+        break;
+    case 3: // Mover luz para a direita
+        lightPosition[0] += 2.0f;
+        break;
+    case 4: // Mover luz para a esquerda
+        lightPosition[0] -= 2.0f;
+        break;
+    case 5: // Mover luz para cima
+        lightPosition[1] += 2.0f;
+        break;
+    case 6: // Mover luz para baixo
+        lightPosition[1] -= 2.0f;
+        break;
+    case 7: // Resetar o trator
+        resetarTrator();
+        break;
+    case 0: // Sair
+        exit(0);
+    }
+    atualizaIluminacao();
 }
 
 
@@ -564,16 +617,31 @@ void reshape(int largura, int altura) {
     glLoadIdentity();
 }
 
+
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
     glutCreateWindow("Retroescavadeira");
+
     inicializa();
+
+    // Criar menu
+    glutCreateMenu(menu);
+    glutAddMenuEntry("Aumentar intensidade da luz", 1);
+    glutAddMenuEntry("Diminuir intensidade da luz", 2);
+    glutAddMenuEntry("Mover luz para a direita", 3);
+    glutAddMenuEntry("Mover luz para a esquerda", 4);
+    glutAddMenuEntry("Mover luz para cima", 5);
+    glutAddMenuEntry("Mover luz para baixo", 6);
+    glutAddMenuEntry("Posicao Inicial", 7); // Corrigir duplicidade e nome
+    glutAddMenuEntry("Sair", 0);
+    glutAttachMenu(GLUT_RIGHT_BUTTON); // Associa ao botão direito do mouse
+
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
-    glutSpecialFunc(teclasEspeciais); // Callback para teclas especiais (setas)
-    glutKeyboardFunc(teclado);       // Callback para teclas regulares, caso necessário
+    glutSpecialFunc(teclasEspeciais);
+    glutKeyboardFunc(teclado);
     glutMainLoop();
     return 0;
 }
