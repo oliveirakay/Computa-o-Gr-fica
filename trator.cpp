@@ -2,9 +2,19 @@
 #include <cmath>
 #include <algorithm>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+GLuint texturaRoda;
+
+bool farolLigado = false; // Estado do farol
+
 
 float cameraAngleX = 0.0f, cameraAngleY = 0.0f;
 float cameraDistance = 10.0f;
+
+float anguloRodas = 0.0f; // Ângulo de rotação das rodas
+
 
 float posX = 0.0f, posZ = 0.0f; // Posição do trator
 float direcao = 0.0f; // Direção do trator (ângulo em graus)
@@ -16,21 +26,94 @@ GLfloat lightAmbient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Luz ambiente
 GLfloat lightDiffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };  // Luz difusa
 GLfloat lightSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // Luz especular
 
+void desenhaFarol() {
+    glPushMatrix();
+    glColor3f(1.0f, 1.0f, 0.8f); // Cor amarelada para o farol
+    glTranslatef(-.83f, 0.3f, .3f); // Posição do farol (ajustar conforme necessário)
+    glutSolidCube(.2);   // Farol como uma esfera
+    glPopMatrix();
+
+    glPushMatrix();
+    glColor3f(1.0f, 1.0f, 0.8f); // Cor amarelada para o farol
+    glTranslatef(-.83f, 0.3f, -.3f); // Posição do farol (ajustar conforme necessário)
+    glutSolidCube(.2);   // Farol como uma esfera
+    glPopMatrix();
+}
+
+void carregarTextura(const char* arquivo, GLuint& texturaID) {
+    int largura, altura, canais;
+    unsigned char* dados = stbi_load(arquivo, &largura, &altura, &canais, 0);
+    if (dados) {
+        
+        glGenTextures(1, &texturaID);
+        glBindTexture(GL_TEXTURE_2D, texturaID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, largura, altura, 0, GL_RGB, GL_UNSIGNED_BYTE, dados);
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, largura, altura, GL_RGB, GL_UNSIGNED_BYTE, dados);
+
+        // Parâmetros de filtro da textura
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(dados);
+    } else {
+        printf("Erro ao carregar a textura: %s\n", arquivo);
+    }
+}
+
+void atualizaFarol() {
+    // Posição e direção do farol direito
+    GLfloat posicaoLuzDireita[] = {
+        posX - 0.82f * cosf(direcao * M_PI / 180.0f),
+        0.3f,
+        posZ + 0.3f * sinf(direcao * M_PI / 180.0f),
+        1.0f
+    };
+    GLfloat direcaoLuzDireita[] = {
+        -cosf(direcao * M_PI / 180.0f),
+        0.0f,
+        sinf(direcao * M_PI / 180.0f)
+    };
+
+    // Posição e direção do farol esquerdo
+    GLfloat posicaoLuzEsquerda[] = {
+        posX - 0.82f * cosf(direcao * M_PI / 180.0f),
+        0.3f,
+        posZ - 0.3f * sinf(direcao * M_PI / 180.0f),
+        1.0f
+    };
+    GLfloat direcaoLuzEsquerda[] = {
+        -cosf(direcao * M_PI / 180.0f),
+        0.0f,
+        sinf(direcao * M_PI / 180.0f)
+    };
+
+    // Atualiza as luzes
+    glLightfv(GL_LIGHT1, GL_POSITION, posicaoLuzDireita);
+    glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, direcaoLuzDireita);
+
+    glLightfv(GL_LIGHT2, GL_POSITION, posicaoLuzEsquerda);
+    glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, direcaoLuzEsquerda);
+}
+
 
 void inicializa() {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);   // Cor de fundo
-    glEnable(GL_DEPTH_TEST);                // Habilita profundidade
-    glEnable(GL_LIGHTING);                  // Habilita iluminação
-    glEnable(GL_LIGHT0);                    // Habilita a fonte de luz 0
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
 
-    // Configura luz inicial
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
     glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
 
-    glEnable(GL_COLOR_MATERIAL);            // Habilita cores no material
+    glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+    glEnable(GL_TEXTURE_2D); // Habilita texturas
+    carregarTextura("pneu.png", texturaRoda);
 }
 
 void atualizaIluminacao() {
@@ -86,13 +169,20 @@ void menu(int opcao) {
     atualizaIluminacao();
 }
 
-
 void desenhaRoda(float raio, float largura) {
-    int numLados = 32; // Número de lados do cilindro
+    glPushMatrix();
+    glRotatef(anguloRodas, 0.0f, 0.0f, 1.0f);
+
+    int numLados = 32;
     float anguloIncremento = 2.0f * M_PI / numLados;
 
-    // Parte externa da roda (pneu preto)
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta para o pneu
+    // Ativar textura
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texturaRoda);
+    
+
     glBegin(GL_QUAD_STRIP);
     for (int i = 0; i <= numLados; i++) {
         float angulo = i * anguloIncremento;
@@ -100,40 +190,44 @@ void desenhaRoda(float raio, float largura) {
         float y = sin(angulo) * raio;
 
         glNormal3f(cos(angulo), sin(angulo), 0.0f);
+        glTexCoord2f((float)i / numLados, 1.0f);
         glVertex3f(x, y, largura / 2.0f);
+        glTexCoord2f((float)i / numLados, 0.0f);
         glVertex3f(x, y, -largura / 2.0f);
     }
     glEnd();
 
-    // Tampão frontal do pneu
-    glColor3f(0.1f, 0.1f, 0.1f); // Cor preta para o pneu
+    glDisable(GL_TEXTURE_2D); // Desativar textura após uso
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    // Tampões (sem textura)
+    glColor3f(0.1f, 0.1f, 0.1f);
+    //glColor3f(1.0f, 1.0f, 1.0f);
+
     glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.0f, 0.0f, largura / 2.0f); // Centro do tampão frontal
+    glVertex3f(0.0f, 0.0f, largura / 2.0f);
     for (int i = 0; i <= numLados; i++) {
         float angulo = i * anguloIncremento;
         glVertex3f(cos(angulo) * raio, sin(angulo) * raio, largura / 2.0f);
     }
     glEnd();
 
-    // Tampão traseiro do pneu
     glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0.0f, 0.0f, -1.0f);
-    glVertex3f(0.0f, 0.0f, -largura / 2.0f); // Centro do tampão traseiro
+    glVertex3f(0.0f, 0.0f, -largura / 2.0f);
     for (int i = 0; i <= numLados; i++) {
         float angulo = i * anguloIncremento;
         glVertex3f(cos(angulo) * raio, sin(angulo) * raio, -largura / 2.0f);
     }
     glEnd();
 
-    // Parte central (encaixe laranja)
-    float raioEncaixe = raio * 0.5f; // Raio menor para o centro laranja
-    glColor3f(.968f, 0.58f, 0.11f);    // Cor amarelo alaranjado para o encaixe
+    // Parte central (encaixe amarelo)
+    float raioEncaixe = raio * 0.5f;
+    glColor3f(0.968f, 0.58f, 0.11f); // Cor amarelo alaranjado
 
     // Frente do encaixe
     glBegin(GL_TRIANGLE_FAN);
     glNormal3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.0f, 0.0f, largura / 2.0f + 0.01f); // Levemente para frente
+    glVertex3f(0.0f, 0.0f, largura / 2.0f + 0.01f);
     for (int i = 0; i <= numLados; i++) {
         float angulo = i * anguloIncremento;
         glVertex3f(cos(angulo) * raioEncaixe, sin(angulo) * raioEncaixe, largura / 2.0f + 0.01f);
@@ -143,14 +237,15 @@ void desenhaRoda(float raio, float largura) {
     // Traseira do encaixe
     glBegin(GL_TRIANGLE_FAN);
     glNormal3f(0.0f, 0.0f, -1.0f);
-    glVertex3f(0.0f, 0.0f, -largura / 2.0f - 0.01f); // Levemente para trás
+    glVertex3f(0.0f, 0.0f, -largura / 2.0f - 0.01f);
     for (int i = 0; i <= numLados; i++) {
         float angulo = i * anguloIncremento;
         glVertex3f(cos(angulo) * raioEncaixe, sin(angulo) * raioEncaixe, -largura / 2.0f - 0.01f);
     }
     glEnd();
-}
 
+    glPopMatrix();
+}
 
 void desenhaCabine() {
     // Dimensões da cabine
@@ -338,9 +433,41 @@ void desenhaCorpoTrator() {
     glVertex3f(-1.0f, -0.5f, 0.5f);            // Inferior frontal
 
     glEnd();
+    
+    // Desenha o farol
+    desenhaFarol();
+
     glPopMatrix();
 }
+void inicializaFarol() {
+    // Configuração da luz do farol direito
+    GLfloat luzAmbiente[] = { 0.7f, 0.7f, 0.7f, 1.0f }; // Ambiente mais claro
+    GLfloat luzDifusa[] = { 3.5f, 3.5f, 3.0f, 1.0f };   // Luz mais forte
+    GLfloat luzEspecular[] = { 4.0f, 4.0f, 3.5f, 1.0f }; // Reflexos intensos
 
+
+    // Farol direito (GL_LIGHT1)
+    glEnable(GL_LIGHT1);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, luzAmbiente);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, luzDifusa);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, luzEspecular);
+
+    glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 45.0f);
+    glLightf(GL_LIGHT1, GL_SPOT_EXPONENT, 2000.0f);
+
+    // Farol esquerdo (GL_LIGHT2)
+    glEnable(GL_LIGHT2);
+    glLightfv(GL_LIGHT2, GL_AMBIENT, luzAmbiente);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, luzDifusa);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, luzEspecular);
+
+    glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, 45.0f);
+    glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, 2000.0f);
+
+    // Inicialmente, as luzes estarão desligadas
+    glDisable(GL_LIGHT1);
+    glDisable(GL_LIGHT2);
+}
 
 float anguloBracoTraseiro = 150.0f;  // Ângulo de rotação do braço traseiro
 float anguloAntebraco = 250.0f;      // Ângulo do antebraço traseiro
@@ -521,6 +648,9 @@ void display() {
     float camZ = cameraDistance * cos(cameraAngleY) * cos(cameraAngleX);
     gluLookAt(camX, camY, camZ, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
+    // Atualizar a posição e direção do farol
+    atualizaFarol();
+
     // Desenhar o trator completo (corpo + cabine + rodas)
     desenhaTrator();
 
@@ -533,10 +663,12 @@ void teclado(unsigned char tecla, int x, int y) {
     case 's': // Mover para frente
         posX += velocidade * cos(direcao * M_PI / 180.0f);
         posZ -= velocidade * sin(direcao * M_PI / 180.0f);
+        anguloRodas -= (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para frente
         break;
     case 'w': // Mover para trás
         posX -= velocidade * cos(direcao * M_PI / 180.0f);
         posZ += velocidade * sin(direcao * M_PI / 180.0f);
+        anguloRodas += (360.0f * velocidade) / (2.0f * M_PI * 0.6f); // Roda girando para trás
         break;
     case 'a': // Girar para a esquerda
         direcao += 5.0f;
@@ -582,6 +714,18 @@ void teclado(unsigned char tecla, int x, int y) {
     case ']': // Inclina a pá traseira para baixo
         anguloPaTraseira = anguloPaTraseira - 5.0f;
         break;
+    case 'f': // Liga/desliga os faróis
+        farolLigado = !farolLigado;
+        if (farolLigado) {
+            glEnable(GL_LIGHT1);
+            glEnable(GL_LIGHT2);
+        } else {
+            glDisable(GL_LIGHT1);
+            glDisable(GL_LIGHT2);
+        }
+        break;
+
+
     case 27:  // ESC
         exit(0);
         break;
@@ -625,6 +769,8 @@ int main(int argc, char** argv) {
     glutCreateWindow("Retroescavadeira");
 
     inicializa();
+    inicializaFarol(); // Inicializa o farol
+
 
     // Criar menu
     glutCreateMenu(menu);
